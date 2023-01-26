@@ -1,0 +1,238 @@
+From 6250aa63496598962bf1ad519f935b660acfdac8 Mon Sep 17 00:00:00 2001
+From: fengwk <759543714@qq.com>
+Date: Fri, 27 Jan 2023 01:04:28 +0800
+Subject: [PATCH] dwm no mouse operation
+
+---
+ config.def.h |  50 +++++++++++++++++++++
+ dwm.c        | 125 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 175 insertions(+)
+
+diff --git a/config.def.h b/config.def.h
+index 9efa774..243891e 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -21,6 +21,12 @@ static const char *colors[][3]      = {
+ /* tagging */
+ static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+ 
++static const int movewinthresholdv  = 12; // 垂直：这个阈值越大movewin操作改变的范围越小
++static const int movewinthresholdh  = 16; // 水平：这个阈值越大movewin操作改变的范围越小
++static const int resizewinthresholdv= 20; // 垂直：这个阈值越大resizewin操作改变的范围越小
++static const int resizewinthresholdh= 40; // 水平：这个阈值越大resizewin操作改变的范围越小
++static const int mousemovequick = 3; // 鼠标移动加速倍数
++
+ static const Rule rules[] = {
+ 	/* xprop(1):
+ 	 *	WM_CLASS(STRING) = instance, class
+@@ -59,6 +65,9 @@ static const Layout layouts[] = {
+ static char dmenumon[2] = "0"; /* component of dmenucmd, manipulated in spawn() */
+ static const char *dmenucmd[] = { "dmenu_run", "-m", dmenumon, "-fn", dmenufont, "-nb", col_gray1, "-nf", col_gray3, "-sb", col_cyan, "-sf", col_gray4, NULL };
+ static const char *termcmd[]  = { "st", NULL };
++static const char *mouseclick1[] = { "xdotool", "click", "1", NULL }; // 鼠标左键点击
++static const char *mouseclick2[] = { "xdotool", "click", "2", NULL }; // 鼠标中键点击
++static const char *mouseclick3[] = { "xdotool", "click", "3", NULL }; // 鼠标右键点击
+ 
+ static const Key keys[] = {
+ 	/* modifier                     key        function        argument */
+@@ -95,6 +104,47 @@ static const Key keys[] = {
+ 	TAGKEYS(                        XK_8,                      7)
+ 	TAGKEYS(                        XK_9,                      8)
+ 	{ MODKEY|ShiftMask,             XK_q,      quit,           {0} },
++
++  /* 窗口控制 */
++  { Mod4Mask,                     XK_f,         togglefloating,  {0} },              // 窗口浮动开关
++  { Mod4Mask,                     XK_Up,        movewin,         {.ui = WIN_UP} },       // 向上移动窗口
++  { Mod4Mask,                     XK_Down,      movewin,         {.ui = WIN_DOWN} },     // 向下移动窗口
++  { Mod4Mask,                     XK_Left,      movewin,         {.ui = WIN_LEFT} },     // 向左移动窗口
++  { Mod4Mask,                     XK_Right,     movewin,         {.ui = WIN_RIGHT} },    // 向右移动窗口
++  { Mod4Mask,                     XK_k,         movewin,         {.ui = WIN_UP} },       // 向上移动窗口
++  { Mod4Mask,                     XK_j,         movewin,         {.ui = WIN_DOWN} },     // 向下移动窗口
++  { Mod4Mask,                     XK_h,         movewin,         {.ui = WIN_LEFT} },     // 向左移动窗口
++  { Mod4Mask,                     XK_l,         movewin,         {.ui = WIN_RIGHT} },    // 向右移动窗口
++  { Mod4Mask|ShiftMask,           XK_k,         resizewin,       {.ui = V_REDUCE} }, // 垂直减少窗口大小
++  { Mod4Mask|ShiftMask,           XK_j,         resizewin,       {.ui = V_EXPAND} }, // 垂直增加窗口大小
++  { Mod4Mask|ShiftMask,           XK_h,         resizewin,       {.ui = H_REDUCE} }, // 水平减少窗口大小
++  { Mod4Mask|ShiftMask,           XK_l,         resizewin,       {.ui = H_EXPAND} }, // 水平增加窗口大小
++  { Mod4Mask|ShiftMask,           XK_Up,        resizewin,       {.ui = V_REDUCE} }, // 垂直减少窗口大小
++  { Mod4Mask|ShiftMask,           XK_Down,      resizewin,       {.ui = V_EXPAND} }, // 垂直增加窗口大小
++  { Mod4Mask|ShiftMask,           XK_Left,      resizewin,       {.ui = H_REDUCE} }, // 水平减少窗口大小
++  { Mod4Mask|ShiftMask,           XK_Right,     resizewin,       {.ui = H_EXPAND} }, // 水平增加窗口大小
++
++  /* 鼠标控制 */
++  { MODKEY|Mod4Mask,              XK_1,         spawn,           {.v = mouseclick1} },  // 鼠标左键点击
++  { MODKEY|Mod4Mask,              XK_2,         spawn,           {.v = mouseclick2} },  // 鼠标中键点击
++  { MODKEY|Mod4Mask,              XK_3,         spawn,           {.v = mouseclick3} },  // 鼠标右键点击
++  { MODKEY|Mod4Mask,              XK_f,         mousefocus,      {0} },                 // 鼠标聚焦到当前选中窗口
++  { MODKEY|Mod4Mask,              XK_k,         mousemove,       {.ui = MOUSE_UP} },    // 向上移动鼠标光标
++  { MODKEY|Mod4Mask,              XK_l,         mousemove,       {.ui = MOUSE_RIGHT} }, // 向右移动鼠标光标
++  { MODKEY|Mod4Mask,              XK_j,         mousemove,       {.ui = MOUSE_DOWM} },  // 向下移动鼠标光标
++  { MODKEY|Mod4Mask,              XK_h,         mousemove,       {.ui = MOUSE_LEFT} },  // 向左移动鼠标光标
++  { MODKEY|Mod4Mask,              XK_Up,        mousemove,       {.ui = MOUSE_UP} },    // 向上移动鼠标光标
++  { MODKEY|Mod4Mask,              XK_Right,     mousemove,       {.ui = MOUSE_RIGHT} }, // 向右移动鼠标光标
++  { MODKEY|Mod4Mask,              XK_Down,      mousemove,       {.ui = MOUSE_DOWM} },  // 向下移动鼠标光标
++  { MODKEY|Mod4Mask,              XK_Left,      mousemove,       {.ui = MOUSE_LEFT} },  // 向左移动鼠标光标
++  { MODKEY|Mod4Mask|ShiftMask,    XK_k,         mousemove,       {.ui = MOUSE_UP + 4*mousemovequick} },    // 向上移动鼠标光标-加速版
++  { MODKEY|Mod4Mask|ShiftMask,    XK_l,         mousemove,       {.ui = MOUSE_RIGHT + 4*mousemovequick} }, // 向右移动鼠标光标-加速版
++  { MODKEY|Mod4Mask|ShiftMask,    XK_j,         mousemove,       {.ui = MOUSE_DOWM + 4*mousemovequick} },  // 向下移动鼠标光标-加速版
++  { MODKEY|Mod4Mask|ShiftMask,    XK_h,         mousemove,       {.ui = MOUSE_LEFT + 4*mousemovequick} },  // 向左移动鼠标光标-加速版
++  { MODKEY|Mod4Mask|ShiftMask,    XK_Up,        mousemove,       {.ui = MOUSE_UP + 4*mousemovequick} },    // 向上移动鼠标光标-加速版
++  { MODKEY|Mod4Mask|ShiftMask,    XK_Right,     mousemove,       {.ui = MOUSE_RIGHT + 4*mousemovequick} }, // 向右移动鼠标光标-加速版
++  { MODKEY|Mod4Mask|ShiftMask,    XK_Down,      mousemove,       {.ui = MOUSE_DOWM + 4*mousemovequick} },  // 向下移动鼠标光标-加速版
++  { MODKEY|Mod4Mask|ShiftMask,    XK_Left,      mousemove,       {.ui = MOUSE_LEFT + 4*mousemovequick} },  // 向左移动鼠标光标-加速版
+ };
+ 
+ /* button definitions */
+diff --git a/dwm.c b/dwm.c
+index 03baf42..0802c3b 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -66,6 +66,9 @@ enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
+ enum { WMProtocols, WMDelete, WMState, WMTakeFocus, WMLast }; /* default atoms */
+ enum { ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle,
+        ClkClientWin, ClkRootWin, ClkLast }; /* clicks */
++enum { WIN_UP, WIN_DOWN, WIN_LEFT, WIN_RIGHT }; /* movewin */
++enum { V_EXPAND, V_REDUCE, H_EXPAND, H_REDUCE }; /* resizewins */
++enum { MOUSE_UP, MOUSE_RIGHT, MOUSE_DOWM, MOUSE_LEFT }; /* movemouse */
+ 
+ typedef union {
+ 	int i;
+@@ -234,6 +237,11 @@ static int xerror(Display *dpy, XErrorEvent *ee);
+ static int xerrordummy(Display *dpy, XErrorEvent *ee);
+ static int xerrorstart(Display *dpy, XErrorEvent *ee);
+ static void zoom(const Arg *arg);
++static int inarea(int x, int y, int rx, int ry, int rw, int rh);
++static void movewin(const Arg *arg);
++static void resizewin(const Arg *arg);
++static void mousefocus(const Arg *arg);
++static void mousemove(const Arg *arg);
+ 
+ /* variables */
+ static const char broken[] = "broken";
+@@ -2134,6 +2142,123 @@ zoom(const Arg *arg)
+ 	pop(c);
+ }
+ 
++int
++inarea(int x, int y, int rx, int ry, int rw, int rh) {
++  return x > rx && x < rx + rw && y > ry && y < ry + rh;
++}
++
++void
++movewin(const Arg *arg)
++{
++    Client *c;
++    int x, y, nx, ny;
++    int px, py;
++
++    c = selmon->sel;
++    if (!c || c->isfullscreen)
++        return;
++    if (!c->isfloating)
++        togglefloating(NULL);
++    x = nx = c->x;
++    y = ny = c->y;
++    switch (arg->ui) {
++        case WIN_UP:
++            ny -= c->mon->wh / movewinthresholdv;
++            ny = MAX(ny, c->mon->wy - HEIGHT(c) * 0.9);
++            break;
++        case WIN_DOWN:
++            ny += c->mon->wh / movewinthresholdv;
++            ny = MIN(ny, c->mon->wy + c->mon->wh - HEIGHT(c) * 0.1);
++            break;
++        case WIN_LEFT:
++            nx -= c->mon->ww / movewinthresholdh;
++            nx = MAX(nx, c->mon->wx - WIDTH(c) * 0.9);
++            break;
++        case WIN_RIGHT:
++            nx += c->mon->ww / movewinthresholdh;
++            nx = MIN(nx, c->mon->wx + c->mon->ww - WIDTH(c) * 0.1);
++            break;
++    }
++    resize(c, nx, ny, c->w, c->h, 1);
++    getrootptr(&px, &py);
++    if (inarea(px, py, x, y, c->w, c->h)) {
++      XWarpPointer(dpy, None, root, 0, 0, 0, 0, nx - x + px, ny - y + py);
++    }
++}
++
++void
++resizewin(const Arg *arg)
++{
++    Client *c;
++    int w, h, nw, nh;
++    int px, py;
++
++    c = selmon->sel;
++    if (!c || c->isfullscreen)
++        return;
++    if (!c->isfloating)
++        togglefloating(NULL);
++    w = nw = c->w;
++    h = nh = c->h;
++    switch (arg->ui) {
++        case H_EXPAND:
++            nw += selmon->wh / resizewinthresholdv;
++            break;
++        case H_REDUCE:
++            nw -= selmon->wh / resizewinthresholdv;
++            break;
++        case V_EXPAND:
++            nh += selmon->ww / resizewinthresholdh;
++            break;
++        case V_REDUCE:
++            nh -= selmon->ww / resizewinthresholdh;
++            break;
++    }
++    nw = MAX(nw, selmon->ww / resizewinthresholdv);
++    nh = MAX(nh, selmon->wh / resizewinthresholdh);
++    if (c->x + nw + 2 * c->bw > selmon->wx + selmon->ww)
++        nw = selmon->wx + selmon->ww - c->x - 2 * c->bw;
++    if (c->y + nh + 2 * c->bw > selmon->wy + selmon->wh)
++        nh = selmon->wy + selmon->wh - c->y - 2 * c->bw;
++    resize(c, c->x, c->y, nw, nh, 1);
++    getrootptr(&px, &py);
++    if (inarea(px, py, c->x, c->y, w, h)) {
++      px = MAX(px, c->x + 1);
++      px = MIN(px, c->x + nw - 1);
++      py = MAX(py, c->y + 1);
++      py = MIN(py, c->y + nh - 1);
++      XWarpPointer(dpy, None, root, 0, 0, 0, 0, px, py);
++    }
++}
++
++void
++mousefocus(const Arg *arg) {
++  if (selmon && selmon->sel) {
++    Client *c = selmon->sel;
++    XWarpPointer(dpy, None, root, 0, 0, 0, 0, c->x + c->w / 2, c->y + c->h / 2);
++  }
++}
++
++void
++mousemove(const Arg *arg) {
++  if (arg) {
++    int x, y;
++    getrootptr(&x, &y);
++    int dir = arg->ui % 4;
++    int step = (arg->ui / 4 + 1) * 35;
++    if (dir == MOUSE_UP) {
++      y -= step;
++    } else if (dir == MOUSE_RIGHT) {
++      x += step;
++    } else if (dir == MOUSE_DOWM) {
++      y += step;
++    } else {
++      x -= step;
++    }
++    XWarpPointer(dpy, None, root, 0, 0, 0, 0, x, y);
++  }
++}
++
+ int
+ main(int argc, char *argv[])
+ {
+-- 
+2.39.1
+
